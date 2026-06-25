@@ -48,7 +48,7 @@ st.markdown(
     .help-text { font-size: 12px; color: #7B8BA8; margin-top: 10px; font-style: italic; }
     </style>
     """,
-    unsafe_allowed_html=True,
+    unsafe_allow_html=True,
 )
 
 # ==========================================
@@ -280,8 +280,8 @@ def show_help_section():
 # ==========================================
 # 6. Main Application Layout
 # ==========================================
-st.markdown('<div class="main-title">Peak Analysis & Clustering Dashboard</div>', unsafe_allowed_html=True)
-st.markdown('<div class="sub-title">An interactive EDA platform for curve plotting, feature extraction, and K-Means clustering allocation</div>', unsafe_allowed_html=True)
+st.markdown('<div class="main-title">Peak Analysis & Clustering Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">An interactive EDA platform for curve plotting, feature extraction, and K-Means clustering allocation</div>', unsafe_allow_html=True)
 
 show_help_section()
 
