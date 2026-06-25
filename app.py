@@ -69,7 +69,7 @@ def load_sidebar_images():
 
 load_sidebar_images()
 
-st.sidebar.markdown("## Data Analytics Sidebar")
+st.sidebar.markdown("## Data Analytics Magnetic field")
 st.sidebar.markdown("---")
 
 # File Upload Panel
