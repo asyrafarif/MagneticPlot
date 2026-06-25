@@ -40,13 +40,16 @@ st.set_page_config(
 )
 
 # Custom header styling
-st.markdown("""
+st.markdown(
+    """
     <style>
     .main-title { font-size: 38px; font-weight: bold; color: #1E3A8A; margin-bottom: 5px; }
     .sub-title { font-size: 16px; color: #4B5563; margin-bottom: 25px; }
     .help-text { font-size: 12px; color: #7B8BA8; margin-top: 10px; font-style: italic; }
     </style>
-""", unsafe_allowed_html=True)
+    """,
+    unsafe_allowed_html=True,
+)
 
 # ==========================================
 # 2. Sidebar: Logos & Developer Metadata
@@ -244,32 +247,34 @@ def validate_uploaded_files(files):
 def show_help_section():
     """Display help information about input file format."""
     with st.expander("📖 Help & File Format Guide", expanded=False):
-        st.markdown("""
-        ### Input File Format Requirements
-        
-        Your data files should contain **two columns** of numeric values separated by spaces or commas:
-        
-        **Example (.txt file):**
-        ```
-        0.5    10.2
-        1.0    15.8
-        1.5    20.1
-        2.0    18.5
-        ```
-        
-        **Supported Features:**
-        - Comments: Lines starting with `%` are ignored
-        - Headers: First few metadata lines are automatically cleaned
-        - Separators: Spaces, tabs, or commas all work
-        - Extensions: `.txt` or `.csv` files
-        
-        ### What the Dashboard Does
-        
-        1. **Peak Detection**: Finds the maximum Y-value in each curve
-        2. **Smoothing** (optional): Reduces noise using Savitzky-Golay filter
-        3. **Clustering**: Groups similar peak characteristics using K-Means
-        4. **Visualization**: Interactive plots and downloadable reports
-        """)
+        st.markdown(
+            """
+            ### Input File Format Requirements
+            
+            Your data files should contain **two columns** of numeric values separated by spaces or commas:
+            
+            **Example (.txt file):**
+            ```
+            0.5    10.2
+            1.0    15.8
+            1.5    20.1
+            2.0    18.5
+            ```
+            
+            **Supported Features:**
+            - Comments: Lines starting with `%` are ignored
+            - Headers: First few metadata lines are automatically cleaned
+            - Separators: Spaces, tabs, or commas all work
+            - Extensions: `.txt` or `.csv` files
+            
+            ### What the Dashboard Does
+            
+            1. **Peak Detection**: Finds the maximum Y-value in each curve
+            2. **Smoothing** (optional): Reduces noise using Savitzky-Golay filter
+            3. **Clustering**: Groups similar peak characteristics using K-Means
+            4. **Visualization**: Interactive plots and downloadable reports
+            """
+        )
 
 
 # ==========================================
