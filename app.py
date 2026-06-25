@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from scipy.signal import savgol_filter
 
 # ==========================================
 # 1. Page Configuration & Styling
@@ -58,6 +59,12 @@ cluster_features = st.sidebar.selectbox(
 )
 n_clusters = st.sidebar.slider("Number of Clusters (K)", min_value=2, max_value=5, value=2, step=1)
 
+# Data Smoothing Configuration
+st.sidebar.markdown("---")
+st.sidebar.header("🔧 Data Processing Options")
+apply_smoothing = st.sidebar.checkbox("Apply Smoothing Filter (Savitzky-Golay)", value=False)
+window_length = st.sidebar.slider("Smoothing Window Size", 5, 51, 11, step=2) if apply_smoothing else 11
+
 # Developer Info Block
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Developers:")
@@ -70,8 +77,17 @@ st.sidebar.caption("Bahagian Teknologi Industri (BTI)\nAgensi Nuklear Malaysia\n
 # ==========================================
 # 3. Robust Data Parsing Engine
 # ==========================================
+@st.cache_data
 def parse_raw_file(file_obj):
-    """ Cleans metadata headers/annotations and extracts numeric tabular data """
+    """
+    Cleans metadata headers/annotations and extracts numeric tabular data.
+    
+    Args:
+        file_obj: Streamlit uploaded file object
+        
+    Returns:
+        pd.DataFrame with columns ['x', 'y'], or None if parsing fails
+    """
     try:
         content = file_obj.read().decode("utf-8")
         # Remove metadata text injected by logs or indexing tags like [source: XXX]
@@ -81,9 +97,11 @@ def parse_raw_file(file_obj):
         df = pd.read_csv(io.StringIO(clean_content), comment='%', sep=r'\s+', header=None)
         
         if df.shape[1] >= 2:
-            df = df.iloc[:, :2]
+            df = df.iloc[:, :2].astype(float, errors='coerce')
             df.columns = ['x', 'y']
-            return df
+            df = df.dropna()  # Remove rows with NaN values
+            if not df.empty:
+                return df
     except Exception as e:
         # Secondary tokenized fallback parser if formatting has irregular linebreaks
         try:
@@ -98,26 +116,88 @@ def parse_raw_file(file_obj):
                 x = numeric_tokens[0::2]
                 y = numeric_tokens[1::2]
                 min_len = min(len(x), len(y))
-                return pd.DataFrame({'x': x[:min_len], 'y': y[:min_len]})
-        except Exception:
+                df = pd.DataFrame({'x': x[:min_len], 'y': y[:min_len]})
+                df = df.dropna()
+                if not df.empty:
+                    return df
+        except Exception as fallback_error:
+            st.warning(f"⚠️ Failed to parse `{file_obj.name}`: {str(fallback_error)}")
             return None
     return None
 
+
+def apply_data_smoothing(df, window_length=11, polyorder=3):
+    """
+    Apply Savitzky-Golay smoothing filter to reduce noise.
+    
+    Args:
+        df: DataFrame with 'x' and 'y' columns
+        window_length: Window size for smoothing (must be odd)
+        polyorder: Polynomial order
+        
+    Returns:
+        Smoothed DataFrame
+    """
+    if len(df) > window_length:
+        df_smooth = df.copy()
+        df_smooth['y'] = savgol_filter(df['y'], window_length, polyorder)
+        return df_smooth
+    return df
+
+
 # ==========================================
-# 4. Main Application Layout
+# 4. Input Validation
+# ==========================================
+def validate_uploaded_files(files):
+    """Validate uploaded files before processing."""
+    if not files:
+        return False, "No files uploaded"
+    
+    if len(files) > 50:
+        st.warning(f"⚠️ Limiting to 50 files. You uploaded {len(files)} files.")
+        files = files[:50]
+    
+    # Check file sizes
+    for f in files:
+        if f.size == 0:
+            return False, f"File '{f.name}' is empty"
+    
+    return True, ""
+
+
+# ==========================================
+# 5. Main Application Layout
 # ==========================================
 st.markdown('<div class="main-title">Peak Analysis & Clustering Dashboard</div>', unsafe_allowed_html=True)
 st.markdown('<div class="sub-title">An interactive EDA platform for curve plotting, feature extraction, and K-Means clustering allocation</div>', unsafe_allowed_html=True)
 
 if uploaded_files:
+    # Validate files
+    is_valid, error_msg = validate_uploaded_files(uploaded_files)
+    if not is_valid:
+        st.error(f"❌ {error_msg}")
+        st.stop()
+    
     all_data = {}
     peak_records = []
     total_data_points = 0
+    failed_files = []
+    
+    # Progress tracking
+    progress_bar = st.progress(0)
+    status_text = st.empty()
     
     # Process files sequentially
-    for f in uploaded_files:
+    for idx, f in enumerate(uploaded_files):
+        status_text.text(f"Processing {idx + 1}/{len(uploaded_files)}: {f.name}")
+        progress_bar.progress((idx + 1) / len(uploaded_files))
+        
         df_parsed = parse_raw_file(f)
         if df_parsed is not None and not df_parsed.empty:
+            # Apply smoothing if enabled
+            if apply_smoothing:
+                df_parsed = apply_data_smoothing(df_parsed, window_length, polyorder=3)
+            
             all_data[f.name] = df_parsed
             total_data_points += len(df_parsed)
             
@@ -132,6 +212,16 @@ if uploaded_files:
                 "Peak_Y": peak_y,
                 "Total_Points": len(df_parsed)
             })
+        else:
+            failed_files.append(f.name)
+    
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
+    
+    # Show warning if some files failed
+    if failed_files:
+        st.warning(f"⚠️ Failed to parse {len(failed_files)} file(s): {', '.join(failed_files)}")
     
     if peak_records:
         df_peaks = pd.DataFrame(peak_records)
@@ -141,8 +231,8 @@ if uploaded_files:
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
         m_col1.metric("Uploaded Files Count", len(all_data))
         m_col2.metric("Aggregated Data Points", total_data_points)
-        m_col3.metric("Minimum Peak $y$", f"{df_peaks['Peak_Y'].min():.5f}")
-        m_col4.metric("Maximum Peak $y$", f"{df_peaks['Peak_Y'].max():.5f}")
+        m_col3.metric("Minimum Peak Y-Value", f"{df_peaks['Peak_Y'].min():.5f}")
+        m_col4.metric("Maximum Peak Y-Value", f"{df_peaks['Peak_Y'].max():.5f}")
         st.markdown("---")
         
         # 4b. Multi-Tab Visualization & Analytics Layout
@@ -159,7 +249,8 @@ if uploaded_files:
                 yaxis_title="Response Intensity (y)",
                 legend_title="Datasets",
                 template="plotly_white",
-                height=550
+                height=550,
+                hovermode='x unified'
             )
             st.plotly_chart(fig_curves, use_container_width=True)
             
@@ -177,7 +268,14 @@ if uploaded_files:
         with tab3:
             st.subheader("K-Means Peak Clustering Groupings")
             
-            if len(df_peaks) >= n_clusters:
+            # Proper edge case handling
+            if len(df_peaks) < n_clusters:
+                st.error(
+                    f"❌ Cannot perform clustering: You have {len(df_peaks)} dataset(s) "
+                    f"but need at least {n_clusters} datasets for {n_clusters} clusters. "
+                    f"Please upload more files or decrease the cluster slider value in the sidebar."
+                )
+            else:
                 # Select features based on sidebar choice
                 if cluster_features == "Peak Y-Value Only":
                     X_feat = df_peaks[['Peak_Y']].copy()
@@ -214,17 +312,17 @@ if uploaded_files:
                 
                 # Export and Download Section
                 st.subheader("💾 Export Analysis Results")
-                csv_buffer = io.StringIO()
-                df_peaks.to_csv(csv_buffer, index=False)
+                csv_buffer = df_peaks.to_csv(index=False)
                 st.download_button(
                     label="Download Peak Clusters Report as CSV",
-                    data=csv_buffer.getvalue(),
+                    data=csv_buffer,
                     file_name="peaks_clustering_report.csv",
                     mime="text/csv"
                 )
-            else:
-                st.warning(f"⚠️ Insufficient datasets available to perform cluster groupings. Please upload at least {n_clusters} files or decrease the cluster slider value in the sidebar.")
     else:
         st.error("❌ Unable to parse any data from the uploaded files. Ensure files contain numeric columns.")
 else:
-    st.info("💡 Welcome! Please upload one or multiple curve response dataset files (.txt or .csv) from the sidebar file management panel to start the automated curve peak analysis and clustering dashboard.")
+    st.info(
+        "💡 Welcome! Please upload one or multiple curve response dataset files (.txt or .csv) "
+        "from the sidebar file management panel to start the automated curve peak analysis and clustering analysis."
+    )
