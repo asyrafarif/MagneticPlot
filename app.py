@@ -57,7 +57,6 @@ st.markdown(
 def load_sidebar_images():
     """Load sidebar images with error handling."""
     images = [
-        ("https://brand.umpsa.edu.my/images/logo-umpsa-full-color2.png", "UMPSA Logo"),
         ("https://www.majalahsains.com/wp-content/uploads/2012/05/Logo-Agensi-Nuklear-Malaysia.png", "Agensi Nuklear Malaysia Logo")
     ]
     
@@ -126,8 +125,8 @@ st.sidebar.markdown("### Developers:")
 st.sidebar.write("**Asyraf Arif Bin Abu Bakar**")
 st.sidebar.caption("Leading Edge NDT Group\nAgensi Nuklear Malaysia\nEmail: asyrafarif@nm.gov.my")
 
-st.sidebar.write("**Dr. Hanafi Ithnin**")
-st.sidebar.caption("Bahagian Teknologi Industri (BTI)\nAgensi Nuklear Malaysia\nEmail: hanafi_i@nm.gov.my")
+st.sidebar.write("**Dr. Nurul A'in**")
+st.sidebar.caption("Leading Edge NDT Group\nAgensi Nuklear Malaysia\nEmail: nurul_ain@nm.gov.my")
 
 # ==========================================
 # 3. Robust Data Parsing Engine
