@@ -71,6 +71,8 @@ load_sidebar_images()
 
 st.sidebar.markdown("## Data Analytics Magnetic field")
 st.sidebar.markdown("---")
+st.sidebar.markdown("## Eddy Current Laboratory")
+st.sidebar.markdown("---")
 
 # File Upload Panel
 st.sidebar.header("📥 Upload Datasets")
